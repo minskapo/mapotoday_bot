@@ -3,6 +3,8 @@ import time
 import schedule
 import asyncio
 import warnings
+import html
+import re
 from dotenv import load_dotenv
 from telegram import Bot
 from telegram.error import TelegramError
@@ -73,6 +75,26 @@ class MapoTodayBot:
             for chat_id in self.subscribed_chats:
                 f.write(f"{chat_id}\n")
     
+    def _escape_markdown(self, text: str) -> str:
+        """
+        마크다운 링크 제목에서 특수문자를 이스케이프
+        
+        Args:
+            text: 원본 텍스트
+        
+        Returns:
+            이스케이프된 텍스트
+        """
+        # HTML 엔티티 디코딩 (&quot; -> ", &amp; -> & 등)
+        text = html.unescape(text)
+        
+        # 마크다운 링크 형식에서 특수문자 이스케이프
+        # [ ] ( ) 는 링크 형식에서 사용되므로 이스케이프 필요
+        text = text.replace('[', '\\[').replace(']', '\\]')
+        text = text.replace('(', '\\(').replace(')', '\\)')
+        
+        return text
+    
     async def send_article_async(self, article: dict, chat_id: str):
         """
         기사 하나를 텔레그램 메시지로 전송 (비동기)
@@ -88,8 +110,11 @@ class MapoTodayBot:
         if not originallink:
             originallink = article.get('link', '')
         
+        # 제목에서 HTML 엔티티 디코딩 및 마크다운 특수문자 이스케이프
+        title_escaped = self._escape_markdown(title)
+        
         # 마크다운 형식으로 제목과 링크 구성
-        message = f"[{title}]({originallink})"
+        message = f"[{title_escaped}]({originallink})"
         
         try:
             await self.bot.send_message(
@@ -124,8 +149,11 @@ class MapoTodayBot:
         if not originallink:
             originallink = article.get('link', '')
         
+        # 제목에서 HTML 엔티티 디코딩 및 마크다운 특수문자 이스케이프
+        title_escaped = self._escape_markdown(title)
+        
         # 마크다운 형식으로 제목과 링크 구성
-        message = f"[{title}]({originallink})"
+        message = f"[{title_escaped}]({originallink})"
         
         # 모든 구독자에게 전송
         failed_chats = []
